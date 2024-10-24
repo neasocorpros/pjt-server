@@ -86,13 +86,6 @@ def query_llm(user_input):
     )
     # 테스트용 코드
     retrieval_grader = grade_prompt | structured_llm_grader
-    question = "80년대 배경의 전두환 등장 영화는?"  # Yes
-    docs = retriever.invoke(question)
-    print(docs)
-    print(docs[2])
-    doc_txt = docs[2].page_content
-    print(retrieval_grader.invoke({"question": question, "document": doc_txt}))
-    print(retrieval_grader.invoke({"question": question, "document": docs}))
 
     # 241017 16:03
     ### Generate
@@ -111,8 +104,6 @@ def query_llm(user_input):
     rag_chain = prompt | llm | StrOutputParser()
 
     # Run
-    generation = rag_chain.invoke({"context": docs, "question": question})
-    print(generation)
     ### Question Re-writer
 
     # Prompt
@@ -128,10 +119,8 @@ def query_llm(user_input):
         ]
     )
 
-    question = "야구 역대 최고 관중 수는 얼마인가요?" # Yes
 
     question_rewriter = re_write_prompt | llm | StrOutputParser()
-    question_rewriter.invoke({"question": question})
     ### Search
 
     from langchain_community.tools.tavily_search import TavilySearchResults
