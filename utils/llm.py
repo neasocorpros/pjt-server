@@ -182,6 +182,7 @@ def retrieve(state):
 
     return {"documents": documents, "question": question, "source": "CSV"}
 
+
 def generate(state):
     """
     Generate answer
@@ -199,6 +200,7 @@ def generate(state):
     # RAG generation
     generation = rag_chain.invoke({"context": documents, "question": question})
     return {"documents": documents, "question": question, "generation": generation}
+
 
 def grade_documents(state):
     """
@@ -232,6 +234,7 @@ def grade_documents(state):
             continue
     return {"documents": filtered_docs, "question": question, "web_search": web_search}
 
+
 def transform_query(state):
     """
     Transform the query to produce a better question.
@@ -250,6 +253,7 @@ def transform_query(state):
     # Re-write question
     better_question = question_rewriter.invoke({"question": question})
     return {"documents": documents, "question": better_question}
+
 
 def web_search(state):
     """
@@ -275,7 +279,11 @@ def web_search(state):
 
     return {"documents": documents, "question": question, "source": "web"}
 
+
+
+
 ### Edges
+
 def decide_to_generate(state):
     """
     Determines whether to generate an answer, or re-generate a question.
@@ -298,6 +306,7 @@ def decide_to_generate(state):
         # 문서가 없으면 질문을 변환하여 웹 검색
         print("---DECISION: TRANSFORM QUERY AND SEARCH---")
         return "transform_query"  # 문서가 없으면 질문 변환으로 이동
+
 
 def generate_answer(state):
     """
@@ -333,7 +342,6 @@ def generate_answer(state):
         "question": question,
         "generation": generation
     }
-
 from langgraph.graph import END, StateGraph, START
 
 # 5. 워크플로우 설정
@@ -389,13 +397,19 @@ app = workflow.compile()
 
 from pprint import pprint
 
+# 기존 코드 내용은 그대로 유지
+# ...
+
 # 워크플로우를 실행하는 함수를 추가
 def query_llm(user_input):
     inputs = {"question": user_input}
     # 워크플로우 실행
     for output in app.stream(inputs):
-        # 모든 노드 출력 (디버깅 용도)
-        for key, value in output.items():
-            pprint(f"Node '{key}':")
-        # 마지막 출력인 generation을 반환
-        return value["generation"]
+        # 응답 구조 출력 (디버깅 용도)
+        print(f"Output: {output}")
+        # 'generation' 키가 없을 경우 예외 처리
+        if "generation" in output:
+            return output["generation"]
+        else:
+            print("Key 'generation' not found in output.")
+            return "Error: Generation key not found."
