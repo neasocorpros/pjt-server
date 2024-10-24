@@ -411,4 +411,4 @@ def query_llm(user_input):
         pprint("\n---\n")
 
     # Final generation
-    pprint(value["generation"])
+    return(value["generation"])
