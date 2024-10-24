@@ -13,12 +13,9 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_pinecone import PineconeVectorStore
 
 text = '''
-    넌 질문-답변을 도와주는 AI 영화 추천기야.
+    넌 숙련된 영화 전문가이자 질문-답변을 도와주는 AI 영화 추천기야.
     아래 제공되는 Context를 통해서 사용자 Question에 대해 답을 해줘야해.
-
-    Context에는 직접적으로 없어도, 추론하거나 계산할 수 있는 답변은 최대한 만들어 봐.
-
-    답은 적절히 \n를 통해 문단을 나눠줘 한국어로 만들어 줘. 
+    답은 적절히 \n\n을 통해 문단을 나눠주고, 한국어로 만들어 줘. 
     # Question:
     {question}
 
@@ -39,25 +36,21 @@ def query_llm(user_input):
     # 5. Retrieve
     retriever = vectorstore.as_retriever()
 
-
     # 6. Prompting
     prompt = PromptTemplate.from_template(text)
-        
-    def query_llm(user_input):
-        # 7. LLM
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-        parser = StrOutputParser()
+    
+    # 7. LLM
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    parser = StrOutputParser()
 
-        # 8. Chain
-        chain = (
-            {'context': retriever, 'question': RunnablePassthrough()}
-            | prompt
-            | llm
-            | parser
-        )
+    # 8. Chain
+    chain = (
+        {'context': retriever, 'question': RunnablePassthrough()}
+        | prompt
+        | llm
+        | parser
+    )
 
-        ans = chain.invoke(user_input)
-        return ans
     from pydantic import BaseModel, Field
     from langchain_core.prompts import ChatPromptTemplate
     from langchain_openai import ChatOpenAI
@@ -119,15 +112,13 @@ def query_llm(user_input):
         ]
     )
 
-
     question_rewriter = re_write_prompt | llm | StrOutputParser()
+    
     ### Search
 
     from langchain_community.tools.tavily_search import TavilySearchResults
 
     web_search_tool = TavilySearchResults(max_results=3)
-
-    web_search_tool.invoke('정마담이 빌린 돈은?')
 
     # 24-10-21 11:12
     from typing import List
@@ -150,6 +141,7 @@ def query_llm(user_input):
         generation: str
         web_search: str
         documents: List[str]
+        
     from langchain.schema import Document
 
     def retrieve(state):
@@ -324,9 +316,9 @@ def query_llm(user_input):
         
         # 조건에 따라 적절한 메시지 추가
         if has_csv:
-            generation += "\n해당 영화 및 사건과 관련된 정보를 POV Timeline에서 확인하실 수 있습니다."
+            generation += "\n\n해당 영화 및 사건과 관련된 정보를 POV Timeline에서 확인하실 수 있습니다."
         elif has_web:
-            generation += "\nPOV Timeline은 해당 정보를 갖고 있지 않아, 관련 영화를 말씀드렸습니다. 해당 영화가 궁금하시다면 웹 검색을 추천드립니다."
+            generation += "\n\nPOV Timeline은 해당 정보를 갖고 있지 않아 웹에서 정보를 찾아드렸습니다. 해당 영화가 궁금하시다면 웹 검색을 추천드립니다."
 
         return {
             "documents": documents,
@@ -345,23 +337,6 @@ def query_llm(user_input):
     workflow.add_node("generate_answer", generate_answer)  # 답변 생성 노드
     workflow.add_node("transform_query", transform_query)  # 질문 변환 노드
     workflow.add_node("web_search_node", web_search)  # 웹 검색 노드
-
-    # decide_to_generate 함수 정의
-    def decide_to_generate(state):
-        """
-        Determines whether to generate an answer, or re-generate a question.
-        """
-        print("---ASSESS GRADED DOCUMENTS---")
-        documents = state["documents"]
-        
-        if documents:
-            # 문서가 있으면 답변을 생성
-            print("---DECISION: GENERATE ANSWER---")
-            return "generate_answer"  
-        else:
-            # 문서가 없으면 질문 변환으로 이동
-            print("---DECISION: TRANSFORM QUERY AND SEARCH---")
-            return "transform_query"
 
     # 엣지 설정
     workflow.add_edge(START, "retrieve")  # 시작: CSV에서 검색
