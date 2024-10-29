@@ -15,6 +15,9 @@ from langchain_pinecone import PineconeVectorStore
 text = '''
     넌 질문-답변을 도와주는 AI 영화 추천기야.
     아래 제공되는 Context를 통해서 사용자 Question에 대해 답을 해줘야해.
+    
+    key 중 "event"는 영화가 다룬 실제 역사적 사건 명이고, "eventYear"는 해당 사건이 벌어진 연도야.
+    "title"키의 값들이 영화 제목들이야.
 
     Context에는 직접적으로 없어도, 추론하거나 계산할 수 있는 답변은 최대한 만들어 봐.
 
