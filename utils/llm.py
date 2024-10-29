@@ -135,6 +135,7 @@ def query_llm(user_input):
         
     from langchain.schema import Document
 
+    # retrieve 함수 수정: 영화 ID 포함
     def retrieve(state):
         """
         Retrieve documents from the JSONL context.
@@ -150,9 +151,9 @@ def query_llm(user_input):
 
         # JSONL에서 문서 검색
         docs = retriever.invoke(question)
-        
-        # 검색된 문서에 source 정보를 추가하여 반환
-        documents = [Document(page_content=doc.page_content, metadata={"source": "JSONL"}) for doc in docs]
+
+        # 검색된 문서에 source와 id 정보를 추가하여 반환
+        documents = [Document(page_content=doc.page_content, metadata={"source": "JSONL", "id": doc.metadata.get("id")}) for doc in docs]
 
         return {"documents": documents, "question": question, "source": "JSONL"}
 
@@ -262,6 +263,7 @@ def query_llm(user_input):
             return "transform_query"  # 문서가 없으면 질문 변환으로 이동
 
 
+    # generate_answer 함수 수정: 영화 ID 포함 반환
     def generate_answer(state):
         """
         Generate answer based on whether relevant movie exists in the context.
@@ -280,21 +282,28 @@ def query_llm(user_input):
 
         # 기본 답변 생성
         generation = rag_chain.invoke({"context": documents, "question": question})
-        
+
         # 문서 소스 확인 및 메시지 추가
         has_jsonl = any(doc.metadata.get("source") == "JSONL" for doc in documents)
         has_web = any(doc.metadata.get("source") == "web" for doc in documents)
-        
+
+        # 영화 ID를 수집 (JSONL 소스의 문서들만 포함)
+        movie_ids = [doc.metadata.get("id") for doc in documents if doc.metadata.get("source") == "JSONL"]
+
         # 조건에 따라 적절한 메시지 추가
         if has_jsonl:
             generation += "\n\n해당 영화 및 사건과 관련된 정보를 POV Timeline에서 확인하실 수 있습니다."
         elif has_web:
             generation += "\n\nPOV Timeline은 해당 정보를 갖고 있지 않아, 웹에서 찾은 결과를 알려드렸습니다. 해당 영화가 궁금하시다면 웹 검색을 추천드립니다."
 
+        print(movie_ids)
+        
+        # ID와 함께 반환
         return {
             "documents": documents,
             "question": question,
-            "generation": generation
+            "generation": generation,
+            "movie_ids": movie_ids  # 프론트엔드에서 사용할 영화 ID 목록
         }
         
     from langgraph.graph import END, StateGraph, START
