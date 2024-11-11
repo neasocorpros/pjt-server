@@ -15,10 +15,11 @@ def index():
     user_input = request.json['message']
     ans = query_llm(user_input)
     print("LLM response:", ans)  # 실제로 어떤 데이터가 오는지 확인
+
     movie_ids = []
     for doc in ans['generation']['documents']:
         print(doc, doc.metadata)
-        mid = int(doc.metadata['id'])
+        mid = int(doc.metadata.get('id', -1))
         movie_ids.append(mid)
     
     llm = ans['generation']
