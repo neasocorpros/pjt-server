@@ -14,7 +14,22 @@ CORS(app)
 def index():
     user_input = request.json['message']
     ans = query_llm(user_input)
-    return {'llm': ans}
+    print("LLM response:", ans)  # 실제로 어떤 데이터가 오는지 확인
+    movie_ids = []
+    for doc in ans['generation']['documents']:
+        print(doc, doc.metadata)
+        mid = int(doc.metadata['id'])
+        movie_ids.append(mid)
+    
+    llm = ans['generation']
+    llm.pop('documents')
+    response = {
+        'llm': llm,
+        'movieIds': movie_ids
+        }
+    print("Sending to client:", response)  # 클라이언트로 보내는 데이터 확인
+    
+    return response
 
 # '/hi' => 사용자에게 {message: 'hi'} 을 응답으로 제공
 @app.route('/hi')

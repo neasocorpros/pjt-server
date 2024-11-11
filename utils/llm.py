@@ -138,12 +138,6 @@ def query_llm(user_input):
     def retrieve(state):
         """
         Retrieve documents from the JSONL context.
-
-        Args:
-            state (dict): The current graph state
-
-        Returns:
-            state (dict): New key added to state, documents, that contains retrieved documents
         """
         print("---RETRIEVE FROM JSONL---")
         question = state["question"]
@@ -151,8 +145,24 @@ def query_llm(user_input):
         # JSONL에서 문서 검색
         docs = retriever.invoke(question)
         
-        # 검색된 문서에 source 정보를 추가하여 반환
-        documents = [Document(page_content=doc.page_content, metadata={"source": "JSONL"}) for doc in docs]
+        # 검색된 문서들의 메타데이터 확인
+        for doc in docs:
+            print(f"Document metadata: {doc.metadata}")  # 디버깅용 로그 추가
+        
+        # 검색된 문서에 source 정보와 id 정보를 추가하여 반환
+        documents = []
+        for doc in docs:
+            # 문서 내용에서 ID 추출 시도
+            try:
+                content = doc.page_content
+                if '"id": ' in content:
+                    movie_id = content.split('"id": ')[1].split(',')[0].strip()
+                    doc.metadata['id'] = movie_id
+            except Exception as e:
+                print(f"Error extracting ID from content: {e}")
+            
+            doc.metadata['source'] = "JSONL"
+            documents.append(doc)
 
         return {"documents": documents, "question": question, "source": "JSONL"}
 
@@ -270,17 +280,19 @@ def query_llm(user_input):
         question = state["question"]
         documents = state["documents"]
 
-        # 문서가 없는 경우 먼저 처리
-        if not documents:
-            return {
-                "documents": documents,
-                "question": question,
-                "generation": "죄송합니다. 관련 영화가 없습니다. 다른 영화를 추천 받으시겠어요?"
-            }
+        # 메타데이터에서 영화 ID 추출
+        movie_ids = []
+        for doc in documents:
+            if doc.metadata and 'id' in doc.metadata:
+                # float에서 int로 변환 후 문자열화
+                movie_id = int(float(doc.metadata['id']))  # float -> int로 변환
+                movie_ids.append(movie_id)
+            
+        print(f"Extracted movie IDs from metadata: {movie_ids}")  # 디버깅용 로그
 
         # 기본 답변 생성
         generation = rag_chain.invoke({"context": documents, "question": question})
-        
+
         # 문서 소스 확인 및 메시지 추가
         has_jsonl = any(doc.metadata.get("source") == "JSONL" for doc in documents)
         has_web = any(doc.metadata.get("source") == "web" for doc in documents)
@@ -294,7 +306,8 @@ def query_llm(user_input):
         return {
             "documents": documents,
             "question": question,
-            "generation": generation
+            "generation": generation,
+            "movie_ids": movie_ids  # 추출된 영화 ID 목록 추가
         }
         
     from langgraph.graph import END, StateGraph, START
@@ -338,13 +351,31 @@ def query_llm(user_input):
 
     # Run
     inputs = {"question": user_input}
-    for output in app.stream(inputs):
-        for key, value in output.items():
-            # Node
-            pprint(f"Node '{key}':")
-            # Optional: print full state at each node
-            # pprint.pprint(value["keys"], indent=2, width=80, depth=None)
-        pprint("\n---\n")
+    ans = app.invoke(inputs)
 
-    # Final generation
-    return(value["generation"])
+    return {
+        'generation': ans,
+    }
+
+    # for output in app.stream(inputs):
+    #     for key, value in output.items():
+    #         # Node
+    #         pprint(f"Node '{key}':")
+    #         # Optional: print full state at each node
+    #         # pprint.pprint(value["keys"], indent=2, width=80, depth=None)
+    #     pprint("\n---\n")
+
+    # # Final generation
+    # # 마지막 부분만 수정
+    # if isinstance(value, dict) and movie_ids in value:
+    #     # generate_answer 노드에서 반환된 경우
+    #     return {
+    #         "generation": value["generation"],
+    #         "movie_ids": value["movie_ids"]
+    #     }
+    # else:
+    #     # 다른 노드에서 반환된 경우
+    #     return {
+    #         "generation": value["generation"] if isinstance(value, dict) else value,
+    #         "movie_ids": []
+    #     }
