@@ -1,9 +1,6 @@
+# vectorstore.py
+
 # 이미 초안 한 번 넣어놨으므로 함부로 실행하지 마시오!!!
-
-
-
-
-
 
 # utils/vectorstore.py => Pinecone에 데이터 추가하기
 # 우리가 가진 자료를 집어넣는 것만 하는 파일임.
